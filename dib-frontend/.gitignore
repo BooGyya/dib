@@ -1,0 +1,47 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Local configuration
+*.local
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Test and tool caches
+.cache/
+.coverage
+coverage/
+
+# Android / Gradle local files
+.gradle/
+.kotlin/
+local.properties
+/build/
+
+# Admin web
+admin-web/node_modules/
+admin-web/dist/
+admin-web/.env.local
+admin-web/*.tsbuildinfo
+admin-web/vite.config.js
+admin-web/vite.config.d.ts

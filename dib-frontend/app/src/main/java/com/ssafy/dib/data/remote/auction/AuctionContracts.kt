@@ -1,0 +1,171 @@
+package com.ssafy.dib.data.remote.auction
+
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import com.ssafy.dib.data.remote.live.LiveBroadcastDto
+import com.ssafy.dib.data.remote.product.ProductSellerSummaryDto
+
+@Serializable
+data class AuctionListResponse(
+    val items: List<AuctionDto> = emptyList(),
+    val nextCursor: String? = null,
+    val hasNext: Boolean = false
+)
+
+@Serializable
+data class SaleHistoryResponse(
+    val items: List<SaleHistoryItemDto> = emptyList(),
+    val nextCursor: String? = null,
+    val hasNext: Boolean = false
+)
+
+@Serializable
+data class SaleHistoryItemDto(
+    val auction: AuctionDto,
+    val product: AuctionProductDto? = null,
+    val order: SaleOrderDto? = null
+)
+
+@Serializable
+data class SaleOrderDto(
+    val orderId: JsonElement? = null,
+    val status: String? = null
+)
+
+@Serializable
+data class AuctionRecommendationResponse(
+    val liveItems: List<LiveBroadcastDto> = emptyList(),
+    val generalItems: List<AuctionDto> = emptyList(),
+    val nextCursor: String? = null,
+    val hasNext: Boolean = false
+)
+
+@Serializable
+data class AuctionDto(
+    val auctionId: JsonElement,
+    val memberId: JsonElement? = null,
+    val productId: JsonElement? = null,
+    val categoryId: JsonElement? = null,
+    val title: String? = null,
+    val productName: String? = null,
+    val categoryName: String? = null,
+    val startPrice: Long? = null,
+    val currentPrice: Long? = null,
+    val bidCount: Int = 0,
+    val auctionTime: Long? = null,
+    val scheduledEndAt: String? = null,
+    val endedAt: String? = null,
+    val serverTime: String? = null,
+    val status: String = "",
+    val bookmarked: Boolean = false,
+    val myBid: MyBidDto? = null,
+    val myOrderId: JsonElement? = null,
+    val product: AuctionProductDto? = null,
+    val sellerSummary: ProductSellerSummaryDto? = null,
+    val liveBroadcastId: JsonElement? = null
+)
+
+@Serializable
+data class MyBidDto(
+    val amount: Long? = null,
+    val isHighestBidder: Boolean = false
+)
+
+@Serializable
+data class AuctionProductDto(
+    val productId: JsonElement? = null,
+    val name: String? = null,
+    val title: String? = null,
+    val categoryName: String? = null,
+    val description: String? = null,
+    val condition: String? = null,
+    val modelName: String? = null,
+    val releaseYear: Int? = null,
+    val marketPrice: Long? = null,
+    val thumbnailUrl: String? = null,
+    val images: List<JsonElement> = emptyList(),
+    // 상품 검수 상태(PENDING·REGISTERED·REJECTED·ON_AUCTION·SOLD). 판매 내역 응답만 준다
+    val status: String? = null
+)
+
+@Serializable data class CreateAuctionRequest(val productId: JsonElement, val startPrice: Long, val auctionTime: Long)
+@Serializable data class UpdateAuctionRequest(val startPrice: Long, val auctionTime: Long, val liveBroadcastId: JsonElement? = null)
+@Serializable data class AuctionCommandResponse(val auctionId: JsonElement? = null, val message: String = "")
+@Serializable data class StartAuctionRequest(val startPrice: Long? = null, val auctionTime: Long? = null)
+@Serializable data class StartAuctionResponse(val message: String = "")
+@Serializable data class BookmarkResponse(val bookmarked: Boolean)
+
+@Serializable
+data class BidHistoryListResponse(
+    val items: List<BidHistoryDto> = emptyList(),
+    val nextCursor: String? = null,
+    val hasNext: Boolean = false
+)
+
+@Serializable
+data class BidHistoryDto(
+    val bidId: JsonElement,
+    val auctionId: JsonElement,
+    val amount: Long,
+    val createdAt: String,
+    val productId: JsonElement? = null,
+    val productTitle: String? = null,
+    val thumbnailUrl: String? = null,
+    val auctionStatus: String? = null,
+    val currentPrice: Long? = null
+)
+
+@Serializable
+data class AuctionBidHistoryListResponse(
+    val items: List<MaskedBidHistoryDto> = emptyList(),
+    val nextCursor: String? = null,
+    val hasNext: Boolean = false
+)
+
+@Serializable
+data class MaskedBidHistoryDto(
+    val bidId: JsonElement,
+    val maskedBidderId: String,
+    val amount: Long,
+    val createdAt: String,
+    val bidderNickname: String? = null
+)
+
+@Serializable
+data class AuctionBidSnapshotResponse(
+    val auctionId: JsonElement,
+    val status: String = "ACTIVE",
+    val currentPrice: Long,
+    val auctionTime: Long,
+    val startedAt: String? = null,
+    val scheduledEndAt: String? = null,
+    val bidCount: Int = 0,
+    val bidderCount: Int = 0,
+    val isHighestBidder: Boolean = false,
+    val serverTime: String? = null
+)
+
+@Serializable
+data class SellerAuctionDto(
+    val auctionId: JsonElement? = null,
+    val productId: JsonElement? = null,
+    val startPrice: Long? = null,
+    val currentPrice: Long? = null,
+    val auctionTime: Long? = null,
+    val status: String? = null,
+    val bidCount: Int? = null,
+    val bidderCount: Int? = null,
+    val productTitle: String? = null,
+    val thumbnailUrl: String? = null
+)
+
+@Serializable data class PlaceBidRequest(val amount: Long)
+
+// POST /auctions/{id}/bids 의 data. 서버 BidPlacedDto 중 앱이 쓰는 값만 받는다
+@Serializable
+data class PlaceBidResponse(
+    val currentPrice: Long? = null,
+    val minAllowedAmount: Long? = null,
+    val bidCount: Int? = null,
+    val highestBidder: Boolean = false
+)

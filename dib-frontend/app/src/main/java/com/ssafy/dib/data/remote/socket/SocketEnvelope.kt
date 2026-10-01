@@ -1,0 +1,141 @@
+package com.ssafy.dib.data.remote.socket
+
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonElement
+
+@Serializable
+data class SocketEnvelope(
+    val eventType: String,
+    val eventId: String? = null,
+    val commandId: String? = null,
+    val occurredAt: String? = null,
+    val payload: JsonObject = JsonObject(emptyMap())
+)
+
+object SocketEventTypes {
+    const val CONNECTED = "CONNECTED"
+    const val PING = "PING"
+    const val PONG = "PONG"
+    const val SUBSCRIBE_AUCTION = "SUBSCRIBE_AUCTION"
+    const val UNSUBSCRIBE_AUCTION = "UNSUBSCRIBE_AUCTION"
+    const val SYNC_AUCTION = "SYNC_AUCTION"
+    const val AUCTION_SNAPSHOT = "AUCTION_SNAPSHOT"
+    const val PLACE_BID = "PLACE_BID"
+    const val BID_ACCEPTED = "BID_ACCEPTED"
+    const val BID_REJECTED = "BID_REJECTED"
+    const val HIGHEST_BID_UPDATED = "HIGHEST_BID_UPDATED"
+    const val AUCTION_EXTENDED = "AUCTION_EXTENDED"
+    const val AUCTION_ENDED = "AUCTION_ENDED"
+    const val SUBSCRIBE_ORDER = "SUBSCRIBE_ORDER"
+    const val ORDER_SNAPSHOT = "ORDER_SNAPSHOT"
+    const val SEND_CHAT_MESSAGE = "SEND_CHAT_MESSAGE"
+    const val CHAT_MESSAGE_ACCEPTED = "CHAT_MESSAGE_ACCEPTED"
+    const val CHAT_MESSAGE_CREATED = "CHAT_MESSAGE_CREATED"
+    const val SUBSCRIBE_LIVE = "SUBSCRIBE_LIVE"
+    const val UNSUBSCRIBE_LIVE = "UNSUBSCRIBE_LIVE"
+    const val SEND_LIVE_CHAT = "SEND_LIVE_CHAT"
+    const val CHAT_ACCEPTED = "CHAT_ACCEPTED"
+    const val CHAT_REJECTED = "CHAT_REJECTED"
+    const val LIVE_CHAT_MESSAGE_CREATED = "LIVE_CHAT_MESSAGE_CREATED"
+    const val LIVE_SNAPSHOT = "LIVE_SNAPSHOT"
+    const val LIVE_STARTED = "LIVE_STARTED"
+    const val LIVE_AUCTION_OPENED = "LIVE_AUCTION_OPENED"
+    const val LIVE_AUCTION_STATUS_UPDATED = "LIVE_AUCTION_STATUS_UPDATED"
+    const val LIVE_AUCTION_CLOSED = "LIVE_AUCTION_CLOSED"
+    const val LIVE_VIEWER_COUNT_UPDATED = "LIVE_VIEWER_COUNT_UPDATED"
+    const val LIVE_ENDED = "LIVE_ENDED"
+    const val SUBSCRIBE_NOTIFICATIONS = "SUBSCRIBE_NOTIFICATIONS"
+    const val DOMAIN_NOTIFICATION = "DOMAIN_NOTIFICATION"
+    const val ERROR = "ERROR"
+    const val SERVER_DRAINING = "SERVER_DRAINING"
+}
+
+@Serializable
+data class ConnectedPayload(
+    val connectionId: String,
+    val memberId: String? = null,
+    val guestSessionId: String? = null,
+    val authenticated: Boolean,
+    val heartbeatIntervalSeconds: Long = 20,
+    val serverTime: String
+)
+
+@Serializable
+data class BidAcceptedPayload(
+    val commandId: String,
+    val bidId: String,
+    val auctionId: String,
+    val amount: Long,
+    val newCurrentPrice: Long,
+    val isHighestBidder: Boolean,
+    val endedAt: String,
+    val acceptedAt: String
+)
+
+@Serializable
+data class BidRejectedPayload(
+    val commandId: String,
+    val auctionId: String,
+    val code: String,
+    val message: String,
+    val currentPrice: Long,
+    val minAllowedAmount: Long,
+    val endedAt: String,
+    val rejectedAt: String
+)
+
+@Serializable
+data class ChatMessageCreatedPayload(
+    val chattingId: JsonElement,
+    val orderId: JsonElement,
+    val memberId: JsonElement,
+    val memberNickname: String? = null,
+    val content: String,
+    val time: String
+)
+
+@Serializable
+data class ChatMessageAcceptedPayload(
+    val commandId: String,
+    val chattingId: JsonElement,
+    val orderId: JsonElement,
+    val time: String
+)
+
+@Serializable
+data class SocketErrorPayload(
+    val commandId: String? = null,
+    val code: String,
+    val message: String,
+    val retryable: Boolean = false
+)
+
+@Serializable
+data class LiveChatMessageCreatedPayload(
+    val liveChattingId: JsonElement,
+    val liveBroadcastId: JsonElement,
+    val memberId: JsonElement,
+    val nickname: String? = null,
+    val content: String,
+    val time: String
+)
+
+@Serializable
+data class LiveChatAcceptedPayload(
+    val commandId: String,
+    val liveBroadcastId: JsonElement? = null,
+    val liveChattingId: JsonElement? = null,
+    val memberId: JsonElement? = null,
+    val nickname: String? = null,
+    val time: String? = null
+)
+
+@Serializable
+data class LiveChatRejectedPayload(
+    val commandId: String,
+    val liveBroadcastId: JsonElement? = null,
+    val code: String,
+    val message: String,
+    val retryable: Boolean = false
+)

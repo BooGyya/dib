@@ -1,0 +1,83 @@
+package com.ssafy.dib
+
+import com.ssafy.dib.feature.auth.SignupForm
+import com.ssafy.dib.feature.auth.SignupValidator
+import com.ssafy.dib.feature.auth.BirthDateVisualTransformation
+import androidx.compose.ui.text.AnnotatedString
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class SignupValidatorTest {
+    @Test
+    fun birthDateFormattingKeepsMonthAndDayCursorPositions() {
+        val transformed = BirthDateVisualTransformation.filter(AnnotatedString("20000131"))
+
+        assertEquals("2000-01-31", transformed.text.text)
+        assertEquals(5, transformed.offsetMapping.originalToTransformed(4))
+        assertEquals(8, transformed.offsetMapping.originalToTransformed(6))
+        assertEquals(4, transformed.offsetMapping.transformedToOriginal(5))
+        assertEquals(6, transformed.offsetMapping.transformedToOriginal(8))
+    }
+
+    private val validForm = SignupForm(
+        phoneNumber = "01012345678",
+        email = "member@example.com",
+        password = "Dibpass1!0",
+        name = "김디브",
+        nickname = "디브러버",
+        gender = "FEMALE",
+        birthDate = "2000-01-31"
+    )
+
+    @Test
+    fun acceptsCompleteSignupForm() {
+        assertTrue(SignupValidator.isFormValid(validForm))
+    }
+
+    @Test
+    fun rejectsPasswordWithoutLettersAndDigits() {
+        assertFalse(SignupValidator.isFormValid(validForm.copy(password = "12345678")))
+        assertFalse(SignupValidator.isFormValid(validForm.copy(password = "password")))
+    }
+
+    @Test
+    fun rejectsPasswordMissingRequiredCharacterClass() {
+        assertFalse(SignupValidator.isPasswordValid("dibpassword1!"))
+        assertFalse(SignupValidator.isPasswordValid("DIBPASSWORD1!"))
+        assertFalse(SignupValidator.isPasswordValid("Dibpassword!"))
+        assertFalse(SignupValidator.isPasswordValid("Dibpassword1"))
+    }
+
+    @Test
+    fun reportsEachPasswordRequirementWhileTyping() {
+        val requirements = SignupValidator.passwordRequirements("Dibpassword1")
+
+        assertEquals(listOf("10~64자", "영문 대문자", "영문 소문자", "숫자", "특수문자"), requirements.map { it.label })
+        assertTrue(requirements.take(4).all { it.satisfied })
+        assertFalse(requirements.last().satisfied)
+    }
+
+    @Test
+    fun rejectsMalformedPhoneAndBirthDate() {
+        assertFalse(SignupValidator.isFormValid(validForm.copy(phoneNumber = "010-1234-5678")))
+        assertFalse(SignupValidator.isFormValid(validForm.copy(phoneNumber = "0212345678")))
+        assertFalse(SignupValidator.isFormValid(validForm.copy(phoneNumber = "01112345678")))
+        assertFalse(SignupValidator.isFormValid(validForm.copy(birthDate = "20000131")))
+        assertFalse(SignupValidator.isFormValid(validForm.copy(birthDate = "2025-02-31")))
+    }
+
+    @Test
+    fun matchesServerSignupFieldLimits() {
+        assertTrue(SignupValidator.isNameValid("김디브"))
+        assertFalse(SignupValidator.isNameValid("가나다라마바사아자차카"))
+        assertFalse(SignupValidator.isEmailValid("a".repeat(251) + "@b.co"))
+        assertFalse(SignupValidator.isPasswordValid("Dibpassword1★"))
+    }
+
+    @Test
+    fun kakaoSignupDoesNotRequirePassword() {
+        assertTrue(SignupValidator.isKakaoFormValid(validForm.copy(password = "")))
+    }
+}

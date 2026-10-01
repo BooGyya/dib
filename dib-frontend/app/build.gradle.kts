@@ -1,0 +1,85 @@
+import java.net.URI
+
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.google.services)
+}
+
+android {
+    namespace = "com.ssafy.dib"
+    compileSdk {
+        version = release(37)
+    }
+
+    defaultConfig {
+        applicationId = "com.ssafy.dib"
+        minSdk = 26
+        targetSdk = 37
+        versionCode = 1
+        versionName = "1.0"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val apiBaseUrl = providers.gradleProperty("DIB_API_BASE_URL").orElse("").get()
+        val webSocketUrl = providers.gradleProperty("DIB_WS_URL").orElse("").get()
+        val tossClientKey = providers.gradleProperty("DIB_TOSS_CLIENT_KEY").orElse("").get()
+        val kakaoRestApiKey = providers.gradleProperty("DIB_KAKAO_REST_API_KEY").orElse("").get()
+        val kakaoRedirectUri = providers.gradleProperty("DIB_KAKAO_REDIRECT_URI").orElse("").get()
+        val parsedKakaoRedirect = runCatching { URI(kakaoRedirectUri) }.getOrNull()
+        buildConfigField("String", "API_BASE_URL", "\"${apiBaseUrl.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+        buildConfigField("String", "WEB_SOCKET_URL", "\"${webSocketUrl.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+        buildConfigField("String", "TOSS_CLIENT_KEY", "\"${tossClientKey.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+        buildConfigField("String", "KAKAO_REST_API_KEY", "\"${kakaoRestApiKey.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+        buildConfigField("String", "KAKAO_REDIRECT_URI", "\"${kakaoRedirectUri.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+        manifestPlaceholders["kakaoRedirectScheme"] = parsedKakaoRedirect?.scheme ?: "https"
+        manifestPlaceholders["kakaoRedirectHost"] = parsedKakaoRedirect?.host ?: "oauth.invalid"
+        manifestPlaceholders["kakaoRedirectPath"] = parsedKakaoRedirect?.path?.ifBlank { "/" } ?: "/oauth/kakao/callback"
+    }
+
+    buildTypes {
+        release {
+            optimization {
+                enable = false
+            }
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+}
+
+dependencies {
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.core.ktx)
+    // 사진 EXIF 회전값 읽기 — 카메라로 세워 찍은 JPEG 는 픽셀이 눕혀 저장되고 회전값만 EXIF 에 있다
+    implementation(libs.androidx.exifinterface)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    testImplementation(libs.junit)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.junit)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.okhttp)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.exoplayer.hls)
+    implementation(libs.androidx.media3.ui.compose)
+    implementation(libs.livekit.android)
+}

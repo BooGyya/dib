@@ -1,0 +1,33 @@
+package com.ssafy.dib.data.remote
+
+object ApiRoutes {
+    const val PHONE_VERIFICATIONS = "/api/v1/auth/phone-verifications"
+    const val EMAIL_AVAILABILITY = "/api/v1/auth/emails/availability"
+    const val AUTH_EMAIL = "/api/v1/auth/email"
+    const val PASSWORD_RESET_LINKS = "/api/v1/auth/password/reset-links"
+    const val PASSWORD = "/api/v1/auth/password"
+    const val SIGN_UP = "/api/v1/auth/signup"
+    const val LOGIN = "/api/v1/auth/login"
+    const val KAKAO_AUTH = "/api/v1/auth/oauth/kakao"
+    const val KAKAO_SIGN_UP = "/api/v1/auth/oauth/kakao/signup"
+    const val TOKEN_REFRESH = "/api/v1/auth/token/refresh"
+    const val LOGOUT = "/api/v1/auth/logout"
+    const val CATEGORIES = "/api/v1/categories"
+    const val PRODUCTS = "/api/v1/products"
+    const val MEMBERS_ME = "/api/v1/members/me"
+    const val MEMBER_SALES = "/api/v1/members/me/sales"
+    const val MEMBER_ADDRESSES = "/api/v1/members/me/addresses"
+    const val AUCTIONS = "/api/v1/auctions"
+    const val BOOKMARKS = "/api/v1/bookmarks"
+    const val ORDERS = "/api/v1/orders"
+    const val CARRIERS = "/api/v1/carriers"
+    const val PAYMENTS = "/api/v1/payments"
+    const val PAYMENT_METHODS = "/api/v1/members/me/payment-methods"
+    const val NOTIFICATIONS = "/api/v1/notifications"
+    const val QUESTIONS = "/api/v1/questions"
+    const val REPORTS = "/api/v1/reports"
+    const val LIVE_BROADCASTS = "/api/v1/live-broadcasts"
+    const val SETTLEMENT_ACCOUNT = "/api/v1/members/me/settlement-account"
+    const val SETTLEMENTS = "/api/v1/settlements"
+
+}

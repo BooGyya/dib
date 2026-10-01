@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 런처 아이콘 배경. 마스코트(dib_mascot_face) 원본의 남색과 같은 색이라 전경과 이음새가 안 보인다 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#042245" />
+</shape>
