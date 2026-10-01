@@ -37,7 +37,6 @@ SSAFY 15기 특화 프로젝트 · 2026.08.18 ~ 2026.09.30 · TEAM B101 (도파�
 9. [실행 방법](#-실행-방법)
 10. [팀원 소개](#-팀원-소개)
 11. [협업 방식](#-협업-방식)
-12. [프로젝트 산출물](#-프로젝트-산출물)
 
 ---
 
@@ -442,22 +441,6 @@ Android 앱은 `~/.gradle/gradle.properties`에 `DIB_API_BASE_URL`, `DIB_WS_URL`
 - **커밋 컨벤션** — `type(scope): 한글 설명` 형식의 Conventional Commits.
 - **문서 주도 개발** — 기능마다 실행 계획을 쓰고 완료 후 `completed/`로 옮기는 방식으로 20건을 진행했고, 각 저장소의 `AGENTS.md`로 코딩 에이전트 컨벤션을 정의했습니다.
 - **CI/CD** — GitHub Actions로 AI 서버 테스트와 GitLab 자동 백업을 돌리고, 배포는 Terraform + 스크립트로 시연 당일 생성·철거했습니다.
-
----
-
-## 📄 프로젝트 산출물
-
-### 🎬 영상 포트폴리오
-
-<div align="center">
-<img src="docs/assets/captures/video-contact-sheet.jpg" alt="영상 포트폴리오 주요 장면" width="1000"/>
-</div>
-
-### 📐 설계 문서
-
-| 시스템 개요 명세 | 테스트 전략 |
-| --- | --- |
-| <img src="docs/assets/captures/doc-system-overview.png"/> | <img src="docs/assets/captures/doc-test-strategy.png"/> |
 
 ---
 
