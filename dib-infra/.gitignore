@@ -1,0 +1,47 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Local configuration
+*.local
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Test and tool caches
+.cache/
+.coverage
+coverage/
+
+# Terraform (절대 커밋 금지 — state에 DB 비밀번호가 평문으로 들어감)
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfplan
+crash.log
+.auction-db-pass
+.dib-db-pass
+
+# Firebase Admin SDK 서비스 계정 키 — 저장소 밖($HOME\.dib-firebase-admin.json)에만 둔다
+*firebase-admin*.json
