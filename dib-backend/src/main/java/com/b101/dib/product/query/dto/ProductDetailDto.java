@@ -1,0 +1,54 @@
+package com.b101.dib.product.query.dto;
+
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import com.b101.dib.product.domain.ProductCondition;
+import com.b101.dib.product.domain.ProductStatus;
+import com.b101.dib.product.domain.ProductAttributeCatalog;
+import com.b101.dib.product.domain.ProductAttributeSpec;
+
+@Getter
+@Setter                
+@NoArgsConstructor
+public class ProductDetailDto {
+    private Long productId;
+    private String title;
+    private String description;
+    private ProductCondition condition;
+    private String modelName;
+    private Integer releaseYear;
+    private Integer purchaseYear;
+    private Map<String, String> attributes;
+    @JsonIgnore
+    private String attributesJson;
+    private Long marketPrice;
+    private String thumbnailUrl;
+    private ProductStatus status;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    
+    private Long categoryId;
+    private String categoryName;
+
+    public List<ProductAttributeSpec> getAttributeSpecs() {
+        return ProductAttributeCatalog.forCategory(categoryName);
+    }
+    
+    private Long memberId;
+    private String nickname;
+    // 판매자 프로필 사진. 앱 상세 화면의 판매자 줄에 그린다
+    private String profileImageUrl;
+
+    // 판매자가 거절·보류 사유를 볼 수 있어야 한다
+    private String moderationReason;
+    private String moderationStage;
+    private LocalDateTime moderatedAt;
+
+}

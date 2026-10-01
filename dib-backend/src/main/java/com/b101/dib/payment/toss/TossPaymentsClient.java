@@ -1,0 +1,100 @@
+package com.b101.dib.payment.toss;
+
+import com.b101.dib.common.exception.ErrorCode;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
+
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
+
+@Component
+public class TossPaymentsClient {
+    private final RestClient restClient;
+
+    public TossPaymentsClient(@Value("${toss.secret-key}") String secretKey,
+                              @Value("${toss.base-url}") String baseUrl,
+                              @Value("${toss.connect-timeout:5s}") Duration connectTimeout,
+                              @Value("${toss.read-timeout:65s}") Duration readTimeout) {
+        String basic = Base64.getEncoder().encodeToString((secretKey + ":").getBytes(StandardCharsets.UTF_8));
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(connectTimeout);
+        requestFactory.setReadTimeout(readTimeout);
+        this.restClient = RestClient.builder()
+                .baseUrl(baseUrl)
+                .requestFactory(requestFactory)
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Basic " + basic)
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .build();
+    }
+
+    public TossBillingKeyResponse issueBillingKey(String authKey, String customerKey) {
+        try {
+            return restClient.post()
+                    .uri("/v1/billing/authorizations/issue")
+                    .body(Map.of("authKey", authKey, "customerKey", customerKey))
+                    .retrieve()
+                    .body(TossBillingKeyResponse.class);
+        } catch (RestClientResponseException e) {
+            throw new TossApiException(ErrorCode.BILLING_KEY_ISSUE_FAILED, e.getResponseBodyAsString());
+        } catch (RestClientException e) {
+            throw new TossApiException(ErrorCode.BILLING_KEY_ISSUE_FAILED, "TossPayments connection failed");
+        }
+    }
+
+    public TossPaymentResponse chargeBilling(String billingKey, String customerKey, long amount,
+                                             String tossOrderId, String orderName) {
+        try {
+            return restClient.post()
+                    .uri("/v1/billing/{billingKey}", billingKey)
+                    .body(Map.of("customerKey", customerKey, "amount", amount,
+                            "orderId", tossOrderId, "orderName", orderName))
+                    .retrieve()
+                    .body(TossPaymentResponse.class);
+        } catch (RestClientResponseException e) {
+            throw new TossApiException(ErrorCode.TOSS_CONFIRM_FAILED, e.getResponseBodyAsString());
+        } catch (RestClientException e) {
+            throw new TossApiException(ErrorCode.TOSS_CONFIRM_FAILED, "TossPayments connection failed");
+        }
+    }
+
+    public TossPaymentResponse cancel(String paymentKey, String reason, Long amount) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("cancelReason", reason);
+        if (amount != null) {
+            body.put("cancelAmount", amount);
+        }
+        try {
+            return restClient.post()
+                    .uri("/v1/payments/{paymentKey}/cancel", paymentKey)
+                    .body(body)
+                    .retrieve()
+                    .body(TossPaymentResponse.class);
+        } catch (RestClientResponseException e) {
+            throw new TossApiException(ErrorCode.REFUND_NOT_ALLOWED, e.getResponseBodyAsString());
+        } catch (RestClientException e) {
+            throw new TossApiException(ErrorCode.REFUND_NOT_ALLOWED, "TossPayments connection failed");
+        }
+    }
+
+    public TossPaymentResponse findByPaymentKey(String paymentKey) {
+        try {
+            return restClient.get()
+                    .uri("/v1/payments/{paymentKey}", paymentKey)
+                    .retrieve()
+                    .body(TossPaymentResponse.class);
+        } catch (RestClientResponseException e) {
+            throw new TossApiException(ErrorCode.PAYMENT_NOT_FOUND, e.getResponseBodyAsString());
+        } catch (RestClientException e) {
+            throw new TossApiException(ErrorCode.PAYMENT_NOT_FOUND, "TossPayments connection failed");
+        }
+    }
+}

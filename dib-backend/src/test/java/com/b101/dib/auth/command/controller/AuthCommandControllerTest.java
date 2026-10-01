@@ -1,0 +1,525 @@
+package com.b101.dib.auth.command.controller;
+
+import java.time.OffsetDateTime;
+
+import com.b101.dib.auth.command.dto.LoginMemberResponse;
+import com.b101.dib.auth.command.dto.LoginResponse;
+import com.b101.dib.auth.command.dto.KakaoAuthResponse;
+import com.b101.dib.auth.command.dto.KakaoProfileResponse;
+import com.b101.dib.auth.command.dto.TokenRefreshResponse;
+import com.b101.dib.auth.command.dto.PhoneVerificationResponse;
+import com.b101.dib.auth.command.dto.PhoneVerificationConfirmResponse;
+import com.b101.dib.auth.command.dto.SignupResponse;
+import com.b101.dib.auth.command.service.LoginService;
+import com.b101.dib.auth.command.service.KakaoAuthService;
+import com.b101.dib.auth.command.service.PasswordResetService;
+import com.b101.dib.auth.command.service.FirebasePhoneVerificationService;
+import com.b101.dib.auth.command.service.SignupService;
+import com.b101.dib.auth.command.service.TokenSessionService;
+import com.b101.dib.auth.exception.InvalidVerificationCodeException;
+import com.b101.dib.auth.token.AccessTokenClaims;
+import com.b101.dib.auth.token.AccessTokenVerifier;
+import com.b101.dib.common.config.SecurityConfig;
+import com.b101.dib.common.exception.BusinessException;
+import com.b101.dib.common.exception.ErrorCode;
+import com.b101.dib.common.exception.RateLimitExceededException;
+import com.b101.dib.member.domain.MemberRole;
+import com.b101.dib.member.domain.MemberStatus;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(AuthCommandController.class)
+@Import(SecurityConfig.class)
+class AuthCommandControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockitoBean
+    private FirebasePhoneVerificationService firebasePhoneVerificationService;
+
+    @MockitoBean
+    private SignupService signupService;
+
+    @MockitoBean
+    private LoginService loginService;
+
+    @MockitoBean
+    private KakaoAuthService kakaoAuthService;
+
+    @MockitoBean
+    private TokenSessionService tokenSessionService;
+
+    @MockitoBean
+    private PasswordResetService passwordResetService;
+
+    @MockitoBean
+    private AccessTokenVerifier accessTokenVerifier;
+
+    @Test
+    void exchangesFirebasePhoneToken() throws Exception {
+        given(firebasePhoneVerificationService.verify(any()))
+                .willReturn(new PhoneVerificationConfirmResponse(
+                        "verification-token",
+                        OffsetDateTime.parse("2026-09-08T18:10:00+09:00")
+                ));
+
+        mockMvc.perform(post("/api/v1/auth/phone-verifications/firebase")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"idToken":"firebase-id-token","phoneNumber":"01012345678","purpose":"SIGN_UP"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.verificationToken").value("verification-token"));
+    }
+
+    @Test
+    void rejectsFirebaseExchangeWithoutIdToken() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/phone-verifications/firebase")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"idToken":"","phoneNumber":"01012345678","purpose":"SIGN_UP"}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void legacySmsEndpointIsUnavailable() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/phone-verifications")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"phoneNumber":"01012345678","purpose":"SIGN_UP"}
+                                """))
+                .andExpect(status().isNotFound());
+    }
+    @Test
+    void createsGeneralMemberAndReturnsTokens() throws Exception {
+        given(signupService.signup(any()))
+                .willReturn(new SignupResponse(
+                        1L,
+                        "user@example.com",
+                        "길동이",
+                        MemberStatus.ACTIVE,
+                        MemberRole.USER,
+                        "access-token",
+                        "refresh-token"
+                ));
+
+        mockMvc.perform(post("/api/v1/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email":"user@example.com",
+                                  "password":"Password1!",
+                                  "name":"홍길동",
+                                  "nickname":"길동이",
+                                  "gender":"MALE",
+                                  "birthDate":"2000-01-01",
+                                  "phoneNumber":"01012345678",
+                                  "phoneVerificationToken":"verification-token",
+                                  "deviceId":"device-id"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.memberId").value(1))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.role").value("USER"))
+                .andExpect(jsonPath("$.accessToken").value("access-token"))
+                .andExpect(jsonPath("$.refreshToken").value("refresh-token"));
+    }
+
+    @Test
+    void rejectsSignupWithoutNickname() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email":"user@example.com",
+                                  "password":"Password1!",
+                                  "name":"홍길동",
+                                  "gender":"MALE",
+                                  "birthDate":"2000-01-01",
+                                  "phoneNumber":"01012345678",
+                                  "phoneVerificationToken":"verification-token",
+                                  "deviceId":"device-id"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+    }
+
+    @Test
+    void rejectsSignupWithInvalidPassword() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email":"user@example.com",
+                                  "password":"Password1가",
+                                  "name":"홍길동",
+                                  "nickname":"길동이",
+                                  "gender":"MALE",
+                                  "birthDate":"2000-01-01",
+                                  "phoneNumber":"01012345678",
+                                  "phoneVerificationToken":"verification-token",
+                                  "deviceId":"device-id"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_PASSWORD"));
+    }
+
+    @Test
+    void logsInGeneralMemberAndReturnsTokens() throws Exception {
+        given(loginService.login(any()))
+                .willReturn(new LoginResponse(
+                        new LoginMemberResponse(
+                                1L,
+                                "user@example.com",
+                                "길동이",
+                                MemberStatus.ACTIVE,
+                                MemberRole.USER
+                        ),
+                        "access-token",
+                        "refresh-token",
+                        1800
+                ));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email":"user@example.com",
+                                  "password":"Password1!",
+                                  "deviceId":"device-id"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.member.memberId").value(1))
+                .andExpect(jsonPath("$.member.email").value("user@example.com"))
+                .andExpect(jsonPath("$.member.nickname").value("길동이"))
+                .andExpect(jsonPath("$.member.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.member.role").value("USER"))
+                .andExpect(jsonPath("$.accessToken").value("access-token"))
+                .andExpect(jsonPath("$.refreshToken").value("refresh-token"))
+                .andExpect(jsonPath("$.accessExpiresIn").value(1800));
+    }
+
+    @Test
+    void returnsSignupTokenForUnlinkedKakaoMember() throws Exception {
+        given(kakaoAuthService.authenticate(any()))
+                .willReturn(new KakaoAuthResponse(
+                        true,
+                        null,
+                        "signup-token",
+                        new KakaoProfileResponse(
+                                "카카오닉네임",
+                                "https://image.example/profile.jpg"
+                        ),
+                        null,
+                        null,
+                        null
+                ));
+
+        mockMvc.perform(post("/api/v1/auth/oauth/kakao")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "authorizationCode":"authorization-code",
+                                  "redirectUri":"http://localhost:5173/oauth/kakao/callback",
+                                  "deviceId":"device-id"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isNewMember").value(true))
+                .andExpect(jsonPath("$.signupToken").value("signup-token"))
+                .andExpect(jsonPath("$.kakaoProfile.nickname").value("카카오닉네임"))
+                .andExpect(jsonPath("$.accessToken").doesNotExist());
+    }
+
+    @Test
+    void completesKakaoSignupAndReturnsTokens() throws Exception {
+        given(kakaoAuthService.signup(any()))
+                .willReturn(new KakaoAuthResponse(
+                        true,
+                        new LoginMemberResponse(
+                                1L,
+                                "user@example.com",
+                                "길동이",
+                                MemberStatus.ACTIVE,
+                                MemberRole.USER
+                        ),
+                        null,
+                        null,
+                        "access-token",
+                        "refresh-token",
+                        1800L
+                ));
+
+        mockMvc.perform(post("/api/v1/auth/oauth/kakao/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "signupToken":"signup-token",
+                                  "email":"user@example.com",
+                                  "name":"홍길동",
+                                  "nickname":"길동이",
+                                  "gender":"MALE",
+                                  "birthDate":"2000-01-01",
+                                  "phoneNumber":"01012345678",
+                                  "phoneVerificationToken":"verification-token",
+                                  "deviceId":"device-id"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.member.memberId").value(1))
+                .andExpect(jsonPath("$.accessToken").value("access-token"))
+                .andExpect(jsonPath("$.refreshToken").value("refresh-token"));
+    }
+
+    @Test
+    void rejectsKakaoAuthenticationWithoutDeviceId() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/oauth/kakao")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "authorizationCode":"authorization-code",
+                                  "redirectUri":"http://localhost:5173/oauth/kakao/callback"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+    }
+
+    @Test
+    void rejectsLoginWithoutDeviceId() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email":"user@example.com",
+                                  "password":"Password1!"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+    }
+
+    @Test
+    void returnsUnauthorizedForInvalidLoginCredentials() throws Exception {
+        given(loginService.login(any()))
+                .willThrow(new BusinessException(ErrorCode.INVALID_CREDENTIALS));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email":"user@example.com",
+                                  "password":"wrong-password",
+                                  "deviceId":"device-id"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
+    }
+
+    @Test
+    void returnsInvalidInputWhenLoginPasswordIsMissing() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email":"user@example.com",
+                                  "deviceId":"device-id"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+    }
+
+    @Test
+    void refreshesAccessAndRefreshTokens() throws Exception {
+        given(tokenSessionService.refresh(any()))
+                .willReturn(new TokenRefreshResponse(
+                        "new-access-token",
+                        "new-refresh-token",
+                        1800
+                ));
+
+        mockMvc.perform(post("/api/v1/auth/token/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "refreshToken":"old-refresh-token",
+                                  "deviceId":"device-id"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("new-access-token"))
+                .andExpect(jsonPath("$.refreshToken").value("new-refresh-token"))
+                .andExpect(jsonPath("$.accessExpiresIn").value(1800));
+    }
+
+    @Test
+    void returnsSessionRevokedForInvalidRefreshSession() throws Exception {
+        given(tokenSessionService.refresh(any()))
+                .willThrow(new BusinessException(ErrorCode.SESSION_REVOKED));
+
+        mockMvc.perform(post("/api/v1/auth/token/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "refreshToken":"reused-refresh-token",
+                                  "deviceId":"device-id"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("SESSION_REVOKED"));
+    }
+
+    @Test
+    void rejectsRefreshWithoutDeviceId() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/token/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"refreshToken":"refresh-token"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+    }
+
+    @Test
+    void logsOutAndReturnsNoContent() throws Exception {
+        given(accessTokenVerifier.verifyBearer("Bearer access-token"))
+                .willReturn(new AccessTokenClaims(1L, MemberRole.USER));
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .header("Authorization", "Bearer access-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"deviceId":"device-id"}
+                                """))
+                .andExpect(status().isNoContent());
+
+        verify(tokenSessionService).logout(
+                "Bearer access-token",
+                new com.b101.dib.auth.command.dto.LogoutRequest("device-id")
+        );
+    }
+
+    @Test
+    void returnsUnauthorizedWhenLogoutAccessTokenIsMissing() throws Exception {
+        org.mockito.BDDMockito.willThrow(new BusinessException(ErrorCode.UNAUTHORIZED))
+                .given(tokenSessionService)
+                .logout(org.mockito.ArgumentMatchers.isNull(), any());
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"deviceId":"device-id"}
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void acceptsPasswordResetLinkRequest() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/password/reset-links")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email":"user@example.com",
+                                  "phoneNumber":"01012345678",
+                                  "phoneVerificationToken":"verification-token"
+                                }
+                                """))
+                .andExpect(status().isAccepted());
+
+        verify(passwordResetService).requestResetLink(
+                new com.b101.dib.auth.command.dto.PasswordResetLinkRequest(
+                        "user@example.com", "01012345678", "verification-token"
+                )
+        );
+    }
+
+    @Test
+    void rejectsPasswordResetLinkRequestWithoutPhoneNumber() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/password/reset-links")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email":"user@example.com",
+                                  "phoneVerificationToken":"verification-token"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+    }
+
+    @Test
+    void resetsPasswordAndReturnsNoContent() throws Exception {
+        mockMvc.perform(patch("/api/v1/auth/password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "resetToken":"reset-token",
+                                  "newPassword":"NewPassword1!"
+                                }
+                                """))
+                .andExpect(status().isNoContent());
+
+        verify(passwordResetService).resetPassword(
+                new com.b101.dib.auth.command.dto.PasswordResetRequest(
+                        "reset-token", "NewPassword1!"
+                )
+        );
+    }
+
+    @Test
+    void rejectsPasswordResetWhenNewPasswordDoesNotMeetPolicy() throws Exception {
+        mockMvc.perform(patch("/api/v1/auth/password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "resetToken":"reset-token",
+                                  "newPassword":"weak-password"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_PASSWORD"));
+    }
+
+    @Test
+    void returnsBadRequestForInvalidPasswordResetToken() throws Exception {
+        org.mockito.BDDMockito.willThrow(
+                        new BusinessException(ErrorCode.INVALID_RESET_TOKEN)
+                )
+                .given(passwordResetService)
+                .resetPassword(any());
+
+        mockMvc.perform(patch("/api/v1/auth/password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "resetToken":"invalid-token",
+                                  "newPassword":"NewPassword1!"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_RESET_TOKEN"));
+    }
+}

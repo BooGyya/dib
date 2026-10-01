@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.b101.dib.member.repository.MemberMapper">
+
+    <resultMap id="AdminMemberQueryMap"
+        type="com.b101.dib.member.query.dto.AdminMemberQueryDto">
+        <id property="memberId" column="member_id" />
+        <result property="email" column="email" />
+        <result property="nickname" column="nickname" />
+        <result property="name" column="name" />
+        <result property="status" column="status" />
+        <result property="role" column="role" />
+        <result property="score" column="score" />
+        <result property="warningCount" column="warning_count" />
+        <result property="suspendedAt" column="suspended_at" />
+        <result property="createdAt" column="created_at" />
+        <result property="deletedAt" column="deleted_at" />
+    </resultMap>
+
+    <resultMap id="MemberDetailMap"
+        type="com.b101.dib.member.query.dto.MemberDetailDto">
+        <id property="memberId" column="member_id" />
+        <result property="email" column="email" />
+        <result property="name" column="name" />
+        <result property="phoneNumber" column="phone_number" />
+        <result property="nickname" column="nickname" />
+        <result property="profileImageUrl" column="profile_image_url" />
+        <result property="gender" column="gender" />
+        <result property="birthDate" column="birth_date" />
+        <result property="status" column="status" />
+        <result property="role" column="role" />
+        <result property="score" column="score" />
+        <result property="lastLoginAt" column="last_login_at" />
+        <result property="bankName" column="bank_name" />
+        <result property="accountHolder" column="account_holder" />
+        <result property="maskedAccountNumber" column="masked_account_number" />
+    </resultMap>
+
+    <select id="findAll" resultMap="AdminMemberQueryMap">
+        SELECT
+            m.member_id,
+            m.email,
+            m.nickname,
+            m.name,
+            m.status,
+            m.role,
+            m.score,
+            m.warning_count,
+            m.suspended_at,
+            m.created_at,
+            m.deleted_at
+        FROM member m
+        <where>
+            <if test="q != null and q != ''">
+                AND (
+                    m.nickname ILIKE '%' || #{q} || '%'
+                    OR m.email ILIKE '%' || #{q} || '%'
+                    OR m.member_id = CASE
+                        WHEN #{q} ~ '^[0-9]+$' THEN CAST(#{q} AS BIGINT)
+                        ELSE -1
+                    END
+                )
+            </if>
+            <if test="status != null">
+                AND m.status = #{status}::member_status
+            </if>
+            <if test="warningCount != null">
+                AND m.warning_count <![CDATA[ >= ]]> #{warningCount}
+            </if>
+            <if test="cursor != null">
+                AND m.member_id &lt; #{cursor}
+            </if>
+        </where>
+        ORDER BY m.member_id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="findById" resultMap="MemberDetailMap">
+        SELECT
+            m.member_id,
+            m.email,
+            m.name,
+            m.phone_number,
+            m.nickname,
+            m.profile_image_url,
+            m.gender,
+            m.birth_date,
+            m.status,
+            m.role,
+            m.score,
+            m.last_login_at,
+            m.bank_name,
+            m.account_holder,
+            CASE
+                WHEN m.account_number IS NULL OR LENGTH(m.account_number) &lt; 5
+                    THEN m.account_number
+                ELSE REGEXP_REPLACE(
+                    LEFT(m.account_number, LENGTH(m.account_number) - 4),
+                    '[0-9]',
+                    '*',
+                    'g'
+                ) || RIGHT(m.account_number, 4)
+            END AS masked_account_number
+        FROM member m
+        WHERE m.member_id = #{memberId}
+    </select>
+</mapper>

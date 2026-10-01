@@ -1,0 +1,101 @@
+plugins {
+    java
+    id("org.springframework.boot") version "4.1.1"
+    id("io.spring.dependency-management") version "1.1.7"
+}
+
+group = "com.b101"
+version = "0.0.1-SNAPSHOT"
+description = "dib"
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.boot:spring-boot-starter-jdbc")
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-mail")
+    implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    implementation("org.springframework.boot:spring-boot-starter-websocket")
+    compileOnly("org.projectlombok:lombok")
+    developmentOnly("org.springframework.boot:spring-boot-devtools")
+    runtimeOnly("org.postgresql:postgresql")
+    annotationProcessor("org.projectlombok:lombok")
+    testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-jdbc-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-security-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-websocket-test")
+    testCompileOnly("org.projectlombok:lombok")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testAnnotationProcessor("org.projectlombok:lombok")
+
+    // MyBatis
+    implementation("org.mybatis.spring.boot:mybatis-spring-boot-starter:4.0.0")
+    // JWT
+    implementation("io.jsonwebtoken:jjwt-api:0.12.6")
+    implementation("com.google.firebase:firebase-admin:9.11.0")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
+
+    // AWS S3
+    implementation(platform("software.amazon.awssdk:bom:2.34.5"))
+    implementation("software.amazon.awssdk:s3")
+    // IRSA(web identity) 자격증명에 필요하다. 이게 없으면 기본 자격증명 체인이 web identity
+    // 단계를 말없이 건너뛰고 EC2 노드 역할로 넘어가, 배포 환경에서 S3 업로드가 403 으로 죽는다
+    implementation("software.amazon.awssdk:sts")
+
+
+    // Actuator — K8s probe 계약 (/actuator/health). 없으면 배포 시 Pod가 안 뜬다
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    // Prometheus 노출 — Kafka consumer lag, outbox 적체, DLT 건수를 밖에서 볼 수단
+    implementation("io.micrometer:micrometer-registry-prometheus")
+
+    // Validation
+    implementation("org.springframework.boot:spring-boot-starter-validation")
+
+    // Kafka
+    implementation("org.springframework.kafka:spring-kafka")
+    implementation("org.springframework.boot:spring-boot-starter-kafka")
+
+    // Flyway — 스키마의 유일한 관리 주체 (로컬/배포 동일 스키마 재현)
+    implementation("org.springframework.boot:spring-boot-starter-flyway")
+    implementation("org.flywaydb:flyway-database-postgresql")
+
+    // Testcontainers — PostgreSQL/Kafka 통합 테스트
+    // Spring Boot 4 BOM 은 Testcontainers 버전을 관리하지 않으므로 BOM 을 직접 가져온다
+    testImplementation(platform("org.testcontainers:testcontainers-bom:1.21.3"))
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:junit-jupiter")
+    testImplementation("org.testcontainers:postgresql")
+    testImplementation("org.testcontainers:kafka")
+
+    // Redis
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
+    // Redisson — 경매 분산락 전용 (Spring Data Redis 연결은 Lettuce 그대로, 스타터 대신 core 만)
+    implementation("org.redisson:redisson:4.7.0")
+
+    // ShedLock — 다중 인스턴스 스케줄러 중복 실행 방지
+    implementation("net.javacrumbs.shedlock:shedlock-spring:7.10.1")
+    implementation("net.javacrumbs.shedlock:shedlock-provider-redis-spring:7.10.1")
+
+    // Swagger UI — http://localhost:8080/swagger-ui.html (springdoc 3.x = Spring Boot 4 대응)
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.1")
+
+    // LiveKit Server SDK
+    implementation("io.livekit:livekit-server:0.15.1")
+
+
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
+}

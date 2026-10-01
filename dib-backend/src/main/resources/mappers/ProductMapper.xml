@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.b101.dib.product.repository.ProductMapper">
+
+	<resultMap id="ProductQueryMap"
+		type="com.b101.dib.product.query.dto.ProductQueryDto">
+
+		<id property="productId" column="product_id" />
+		<result property="memberId" column="member_id" />
+		<result property="categoryId" column="category_id" />
+		<result property="title" column="title" />
+		<result property="description" column="description" />
+		<result property="condition" column="condition" />
+		<result property="modelName" column="model_name" />
+		<result property="releaseYear" column="release_year" />
+		<result property="marketPrice" column="market_price" />
+		<result property="thumbnailUrl" column="thumbnail_url" />
+		<result property="status" column="status" />
+		<result property="createdAt" column="created_at" />
+		<result property="updatedAt" column="updated_at" />
+		<result property="deletedAt" column="deleted_at" />
+
+	</resultMap>
+
+	<select id="findAll" resultMap="ProductQueryMap">
+		SELECT
+			p.product_id,
+			p.member_id,
+			p.category_id,
+			p.title,
+			p.description,
+			p.condition,
+			p.model_name,
+			p.release_year,
+			p.market_price,
+			p.thumbnail_url,
+			p.status,
+			p.created_at,
+			p.updated_at,
+			p.deleted_at
+		FROM product p
+		WHERE p.deleted_at IS NULL
+		AND p.status in ('REGISTERED', 'ON_AUCTION')
+		<if test="cursor != null">
+			AND p.product_id &lt; #{cursor}
+		</if>
+		<!-- product_id 는 단조 증가 시퀀스라 created_at DESC 와 순서가 같다. 단일 컬럼 커서가 복합 커서보다 단순해 이쪽을 택했다 -->
+		ORDER BY p.product_id DESC
+		LIMIT #{limit}
+	</select>
+	
+	<resultMap id="ProductListMap"
+		type="com.b101.dib.product.query.dto.ProductListDto">
+
+		<id property="productId" column="product_id" />
+		<result property="memberId" column="member_id" />
+		<result property="categoryId" column="category_id" />
+		<result property="title" column="title" />
+		<result property="description" column="description" />
+		<result property="condition" column="condition" />
+		<result property="modelName" column="model_name" />
+		<result property="releaseYear" column="release_year" />
+		<result property="marketPrice" column="market_price" />
+		<result property="thumbnailUrl" column="thumbnail_url" />
+		<result property="productStatus" column="product_status" />
+		<result property="productCreatedAt" column="product_created_at" />
+		<result property="productUpdatedAt" column="product_updated_at" />
+		<result property="productDeletedAt" column="product_deleted_at" />
+		<!-- PENDING 이 "AI 검수 중" 인지 "관리자 검토 대기" 인지는 이 둘로 가른다. moderated_at 이 null 이면 AI 결과 대기,
+		     값이 있으면 AI 가 PENDING 판정을 냈거나 실패(stage=fallback)해 사람이 볼 차례. findMyProducts 만 채우고 나머지 조회는 null -->
+		<result property="moderationStage" column="moderation_stage" />
+		<result property="moderatedAt" column="moderated_at" />
+		
+		<result property="auctionId" column="auction_id" />
+		<result property="startPrice" column="start_price" />
+		<result property="currentPrice" column="current_price" />
+		<result property="auctionTime" column="auction_time" />
+		<result property="startedAt" column="started_at" />
+		<result property="endedAt" column="ended_at" />
+		<result property="auctionStatus" column="auction_status" />
+		<result property="bidCount" column="bid_count" />
+		<result property="bidderCount" column="bidder_count" />
+		<result property="viewCount" column="view_count" />
+		<result property="bookmarkCount" column="bookmark_count" />
+		<result property="topBidId" column="top_bid_id" />
+		<result property="extensionCount" column="extension_count" />
+		<result property="auctionCreatedAt" column="auction_created_at" />
+		<result property="auctionUpdatedAt" column="auction_updated_at" />
+		<result property="auctionDeletedAt" column="auction_deleted_at" />
+		<result property="liveBroadcastId" column="live_broadcast_id" />
+
+	</resultMap>
+	
+	<select id="findMyProducts" resultMap="ProductListMap">
+		SELECT
+			p.product_id,
+			p.member_id,
+			p.category_id,
+			p.title,
+			p.description,
+			p.condition,
+			p.model_name,
+			p.release_year,
+			p.market_price,
+			p.thumbnail_url,
+			p.status as product_status,
+			p.created_at as product_created_at,
+			p.updated_at as product_updated_at,
+			p.deleted_at as product_deleted_at,
+			p.moderation_stage,
+			p.moderated_at,
+			
+			a.auction_id,
+			a.start_price,
+			a.current_price,
+			a.auction_time,
+			a.started_at,
+			a.ended_at,
+			a.status as auction_status,
+			a.bid_count,
+			a.bidder_count,
+			a.view_count,
+			a.bookmark_count,
+			a.top_bid_id,
+			a.extension_count,
+			a.created_at as auction_created_at,
+			a.updated_at as auction_updated_at,
+			a.deleted_at as auction_deleted_at,
+			a.live_broadcast_id
+			
+		FROM product p
+		<!-- 검수 통과 전 상품은 경매 행이 없다. INNER JOIN 이면 판매자가 자기 PENDING 상품을 못 본다 -->
+		LEFT JOIN auction a ON p.product_id = a.product_id
+		WHERE p.deleted_at IS NULL
+		AND p.member_id = #{myId}
+		<if test="cursor != null">
+			AND p.product_id &lt; #{cursor}
+		</if>
+		<!-- 커서 컬럼과 정렬 기준을 일치시키려 a.created_at DESC 대신 p.product_id DESC 로 바꿨다 -->
+		ORDER BY p.product_id DESC
+		LIMIT #{limit}
+	</select>
+	
+	<select id="findByMemberId" resultMap="ProductListMap">
+		SELECT
+			p.product_id,
+			p.member_id,
+			p.category_id,
+			p.title,
+			p.description,
+			p.condition,
+			p.model_name,
+			p.release_year,
+			p.market_price,
+			p.thumbnail_url,
+			p.status as product_status,
+			p.created_at as product_created_at,
+			p.updated_at as product_updated_at,
+			p.deleted_at as product_deleted_at,
+			
+			a.auction_id,
+			a.start_price,
+			a.current_price,
+			a.auction_time,
+			a.started_at,
+			a.ended_at,
+			a.status as auction_status,
+			a.bid_count,
+			a.bidder_count,
+			a.view_count,
+			a.bookmark_count,
+			a.top_bid_id,
+			a.extension_count,
+			a.created_at as auction_created_at,
+			a.updated_at as auction_updated_at,
+			a.deleted_at as auction_deleted_at,
+			a.live_broadcast_id
+			
+		FROM product p
+		JOIN auction a ON p.product_id = a.product_id
+		WHERE p.deleted_at IS NULL
+		AND p.status IN ('REGISTERED', 'ON_AUCTION')
+		AND p.member_id = #{memberId}
+		ORDER BY a.created_at DESC
+	</select>
+	
+	<select id="search" resultMap="ProductListMap">
+		SELECT
+			p.product_id,
+			p.member_id,
+			p.category_id,
+			p.title,
+			p.description,
+			p.condition,
+			p.model_name,
+			p.release_year,
+			p.market_price,
+			p.thumbnail_url,
+			p.status as product_status,
+			p.created_at as product_created_at,
+			p.updated_at as product_updated_at,
+			p.deleted_at as product_deleted_at,
+			
+			a.auction_id,
+			a.start_price,
+			a.current_price,
+			a.auction_time,
+			a.started_at,
+			a.ended_at,
+			a.status as auction_status,
+			a.bid_count,
+			a.bidder_count,
+			a.view_count,
+			a.bookmark_count,
+			a.top_bid_id,
+			a.extension_count,
+			a.created_at as auction_created_at,
+			a.updated_at as auction_updated_at,
+			a.deleted_at as auction_deleted_at,
+			a.live_broadcast_id
+			
+		FROM product p
+		JOIN auction a ON p.product_id = a.product_id
+		WHERE
+		p.deleted_at IS NULL
+		AND p.status IN ('REGISTERED', 'ON_AUCTION')
+		<if test="filter.keyword != null">
+			AND (p.title LIKE CONCAT('%', #{filter.keyword}, '%')
+				OR p.description LIKE CONCAT('%', #{filter.keyword}, '%'))
+		</if>
+		<if test="filter.categoryId != null">
+			AND p.category_id = #{filter.categoryId}
+		</if>
+		<!-- 입찰 전 경매는 current_price 가 시작가와 같다. 둘 중 있는 값으로 비교한다 -->
+		<if test="filter.minPrice != null">
+			AND COALESCE(a.current_price, a.start_price) &gt;= #{filter.minPrice}
+		</if>
+		<if test="filter.maxPrice != null">
+			AND COALESCE(a.current_price, a.start_price) &lt;= #{filter.maxPrice}
+		</if>
+		<!-- condition 은 Postgres enum 이라 바인딩 값에 캐스트가 필요하다 (다른 매퍼도 같은 방식) -->
+		<if test="filter.condition != null">
+			AND p.condition = #{filter.condition}::product_condition
+		</if>
+		<if test="filter.onAuctionOnly == true">
+			AND a.status = 'ACTIVE'
+		</if>
+		<if test="cursor != null">
+			AND p.product_id &lt; #{cursor}
+		</if>
+		<!-- 커서 컬럼과 정렬 기준을 일치시키려 a.created_at DESC 대신 p.product_id DESC 로 바꿨다 -->
+		ORDER BY p.product_id DESC
+		LIMIT #{limit}
+	</select>
+
+	<resultMap id="ProductDetailMap"
+		type="com.b101.dib.product.query.dto.ProductDetailDto">
+		<id property="productId" column="product_id" />      <!-- <id> 가 "같은 상품" 판단 기준 -->
+		<result property="title" column="title" />
+		<result property="description" column="description" />
+		<result property="condition" column="condition" />
+		<result property="modelName" column="model_name" />
+		<result property="releaseYear" column="release_year" />
+		<result property="purchaseYear" column="purchase_year" />
+		<result property="attributesJson" column="attributes_json" />
+		<result property="marketPrice" column="market_price" />
+		<result property="thumbnailUrl" column="thumbnail_url" />
+		<result property="status" column="status" />
+		<result property="createdAt" column="created_at" />
+		<result property="updatedAt" column="updated_at" />
+		
+		<result property="categoryId" column="category_id" />
+		<result property="categoryName" column="category_name" />
+		<result property="memberId" column="member_id" />
+		<result property="nickname" column="nickname" />
+		<result property="profileImageUrl" column="profile_image_url" />
+
+		<result property="moderationReason" column="moderation_reason" />
+		<result property="moderationStage" column="moderation_stage" />
+		<result property="moderatedAt" column="moderated_at" />
+	</resultMap>
+
+	<select id="findById" resultMap="ProductDetailMap">
+		SELECT
+			p.product_id,
+			p.title,
+			p.description,
+			p.condition,
+			p.model_name,
+			p.release_year,
+			p.purchase_year,
+			p.attributes::text AS attributes_json,
+			p.market_price,
+			p.thumbnail_url,
+			p.status,
+			p.created_at,
+			p.updated_at,
+			p.moderation_reason,
+			p.moderation_stage,
+			p.moderated_at,
+			
+			c.category_id,
+			c.name AS category_name,
+			
+			m.member_id,
+			m.nickname,
+			m.profile_image_url
+		
+		FROM product p
+		JOIN category c ON c.category_id = p.category_id
+		JOIN member m ON m.member_id = p.member_id
+		WHERE p.product_id = #{productId}
+		AND p.deleted_at IS NULL
+	</select>
+
+	<resultMap id="AdminProductQueryMap"
+		type="com.b101.dib.product.query.dto.AdminProductQueryDto">
+		<id property="productId" column="product_id" />
+		<result property="memberId" column="member_id" />
+		<result property="memberNickname" column="member_nickname" />
+		<result property="title" column="title" />
+		<result property="status" column="status" />
+		<result property="createdAt" column="created_at" />
+		<result property="updatedAt" column="updated_at" />
+		<result property="moderationReason" column="moderation_reason" />
+		<result property="moderationStage" column="moderation_stage" />
+		<result property="moderatedAt" column="moderated_at" />
+	</resultMap>
+
+	<select id="findForModeration" resultMap="AdminProductQueryMap">
+		SELECT
+			p.product_id,
+			p.member_id,
+			m.nickname AS member_nickname,
+			p.title,
+			p.status,
+			p.created_at,
+			p.updated_at,
+			p.moderation_reason,
+			p.moderation_stage,
+			p.moderated_at
+		FROM product p
+		JOIN member m ON m.member_id = p.member_id
+		WHERE p.deleted_at IS NULL
+		<choose>
+			<when test="status != null">
+				AND p.status = #{status}::product_status
+			</when>
+			<otherwise>
+				AND p.status IN ('PENDING'::product_status, 'REJECTED'::product_status)
+			</otherwise>
+		</choose>
+		ORDER BY p.created_at
+	</select>
+</mapper>

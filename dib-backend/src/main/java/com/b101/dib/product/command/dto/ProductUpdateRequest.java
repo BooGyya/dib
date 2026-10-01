@@ -1,0 +1,30 @@
+package com.b101.dib.product.command.dto;
+
+import com.b101.dib.product.domain.ProductCondition;
+
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import java.util.Map;
+
+@Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor  
+public class ProductUpdateRequest {
+	private Long categoryId;
+    private String title;
+    private String description;
+    private ProductCondition condition;
+    private String modelName;
+    private Integer releaseYear;
+    private Integer purchaseYear;
+    private Map<String, String> attributes;
+    private Long marketPrice;
+
+    private Long startPrice;
+    private Integer auctionTime;
+}

@@ -1,0 +1,46 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Local configuration
+*.local
+
+# Logs
+*.log
+logs/
+
+# Build artifacts / Gradle cache
+build/
+.gradle/
+.gradle-user/
+*.class
+out/
+bin/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.project
+.classpath
+.settings/
+.factorypath
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Test and tool caches
+.cache/
+.coverage
+coverage/

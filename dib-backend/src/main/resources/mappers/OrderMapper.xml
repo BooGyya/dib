@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.b101.dib.order.repository.OrderMapper">
+
+    <resultMap id="OrderQueryMap"
+        type="com.b101.dib.order.query.dto.OrderQueryDto">
+        <id property="orderId" column="order_id" />
+        <result property="auctionId" column="auction_id" />
+        <result property="productId" column="product_id" />
+        <result property="productTitle" column="product_title" />
+        <result property="thumbnailUrl" column="thumbnail_url" />
+        <result property="sellerId" column="seller_id" />
+        <result property="sellerNickname" column="seller_nickname" />
+        <result property="buyerId" column="buyer_id" />
+        <result property="buyerNickname" column="buyer_nickname" />
+        <result property="finalPrice" column="final_price" />
+        <result property="status" column="status" />
+        <result property="paymentDue" column="payment_due" />
+        <result property="trackingNumber" column="tracking_number" />
+        <result property="createdAt" column="created_at" />
+        <result property="updatedAt" column="updated_at" />
+    </resultMap>
+
+    <resultMap id="PurchaseHistoryRowMap"
+        type="com.b101.dib.order.query.dto.PurchaseHistoryRowDto">
+        <id property="orderId" column="order_id" />
+        <result property="sellerId" column="seller_id" />
+        <result property="sellerNickname" column="seller_nickname" />
+        <result property="finalPrice" column="final_price" />
+        <result property="orderStatus" column="order_status" />
+        <result property="paymentDue" column="payment_due" />
+        <result property="carrier" column="carrier" />
+        <result property="trackingNumber" column="tracking_number" />
+        <result property="orderCreatedAt" column="order_created_at" />
+        <result property="auctionId" column="auction_id" />
+        <result property="startPrice" column="start_price" />
+        <result property="currentPrice" column="current_price" />
+        <result property="auctionStatus" column="auction_status" />
+        <result property="auctionEndedAt" column="auction_ended_at" />
+        <result property="productId" column="product_id" />
+        <result property="productTitle" column="product_title" />
+        <result property="thumbnailUrl" column="thumbnail_url" />
+        <result property="condition" column="condition" />
+        <result property="modelName" column="model_name" />
+        <result property="paymentId" column="payment_id" />
+        <result property="paymentAmount" column="payment_amount" />
+        <result property="paymentType" column="payment_type" />
+        <result property="receiptUrl" column="receipt_url" />
+        <result property="paidAt" column="paid_at" />
+    </resultMap>
+
+    <select id="findByMemberId" resultMap="OrderQueryMap">
+        SELECT
+            o.order_id,
+            o.auction_id,
+            a.product_id,
+            p.title AS product_title,
+            p.thumbnail_url,
+            o.seller_id,
+            s.nickname AS seller_nickname,
+            o.buyer_id,
+            b.nickname AS buyer_nickname,
+            o.final_price,
+            o.status,
+            o.payment_due,
+            o.tracking_number,
+            o.created_at,
+            o.updated_at
+        FROM "order" o
+        JOIN auction a ON a.auction_id = o.auction_id
+        JOIN product p ON p.product_id = a.product_id
+        JOIN member s ON s.member_id = o.seller_id
+        JOIN member b ON b.member_id = o.buyer_id
+        <where>
+            <choose>
+                <when test="role != null and role.name() == 'BUYER'">
+                    o.buyer_id = #{memberId}
+                </when>
+                <when test="role != null and role.name() == 'SELLER'">
+                    o.seller_id = #{memberId}
+                </when>
+                <otherwise>
+                    (o.buyer_id = #{memberId} OR o.seller_id = #{memberId})
+                </otherwise>
+            </choose>
+            <if test="status != null">
+                AND o.status = #{status}::order_status
+            </if>
+            <if test="cursor != null">
+                AND o.order_id &lt; #{cursor}
+            </if>
+        </where>
+        ORDER BY o.order_id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="findPurchasesByBuyerId" resultMap="PurchaseHistoryRowMap">
+        SELECT
+            o.order_id,
+            o.seller_id,
+            seller.nickname AS seller_nickname,
+            o.final_price,
+            o.status AS order_status,
+            o.payment_due,
+            o.carrier,
+            o.tracking_number,
+            o.created_at AS order_created_at,
+            a.auction_id,
+            a.start_price,
+            a.current_price,
+            a.status AS auction_status,
+            a.ended_at AS auction_ended_at,
+            p.product_id,
+            p.title AS product_title,
+            p.thumbnail_url,
+            p.condition,
+            p.model_name,
+            pay.payment_id,
+            pay.amount AS payment_amount,
+            pay.type AS payment_type,
+            pay.receipt_url,
+            pay.paid_at
+        FROM "order" o
+        JOIN member seller ON seller.member_id = o.seller_id
+        JOIN auction a ON a.auction_id = o.auction_id
+        JOIN product p ON p.product_id = a.product_id
+        LEFT JOIN LATERAL (
+            SELECT latest_payment.*
+            FROM payment latest_payment
+            WHERE latest_payment.order_id = o.order_id
+            ORDER BY latest_payment.payment_id DESC
+            LIMIT 1
+        ) pay ON TRUE
+        WHERE o.buyer_id = #{buyerId}
+        <if test="orderStatus != null">
+            AND o.status = #{orderStatus}::order_status
+        </if>
+        <if test="cursor != null">
+            AND o.order_id &lt; #{cursor}
+        </if>
+        ORDER BY o.order_id DESC
+        LIMIT #{limit}
+    </select>
+
+    <resultMap id="OrderDetailMap"
+        type="com.b101.dib.order.query.dto.OrderDetailDto">
+        <id property="orderId" column="order_id" />
+        <result property="sellerId" column="seller_id" />
+        <result property="sellerNickname" column="seller_nickname" />
+        <result property="sellerProfileImageUrl" column="seller_profile_image_url" />
+        <result property="buyerId" column="buyer_id" />
+        <result property="buyerNickname" column="buyer_nickname" />
+        <result property="finalPrice" column="final_price" />
+        <result property="status" column="status" />
+        <result property="paymentDue" column="payment_due" />
+        <result property="address" column="address" />
+        <result property="carrier" column="carrier" />
+        <result property="trackingNumber" column="tracking_number" />
+        <result property="chattingSessionId" column="chatting_session_id" />
+        <result property="createdAt" column="created_at" />
+        <result property="updatedAt" column="updated_at" />
+        <result property="heldAt" column="held_at" />
+        <result property="holdReportId" column="hold_report_id" />
+        <result property="auctionId" column="auction_id" />
+        <result property="startPrice" column="start_price" />
+        <result property="currentPrice" column="current_price" />
+        <result property="auctionStatus" column="auction_status" />
+        <result property="auctionEndedAt" column="auction_ended_at" />
+        <result property="productId" column="product_id" />
+        <result property="productTitle" column="product_title" />
+        <result property="thumbnailUrl" column="thumbnail_url" />
+        <result property="condition" column="condition" />
+        <result property="modelName" column="model_name" />
+        <result property="paymentId" column="payment_id" />
+        <result property="paymentAmount" column="payment_amount" />
+        <result property="paymentType" column="payment_type" />
+        <result property="paidAt" column="paid_at" />
+        <result property="settlementId" column="settlement_id" />
+        <result property="netAmount" column="net_amount" />
+        <result property="payoutAt" column="payout_at" />
+    </resultMap>
+
+    <select id="findById" resultMap="OrderDetailMap">
+        SELECT
+            o.order_id,
+            o.seller_id,
+            s.nickname AS seller_nickname,
+            s.profile_image_url AS seller_profile_image_url,
+            o.buyer_id,
+            b.nickname AS buyer_nickname,
+            o.final_price,
+            o.status,
+            o.payment_due,
+            o.address::text AS address,
+            o.carrier,
+            o.tracking_number,
+            o.chatting_session_id,
+            o.created_at,
+            o.updated_at,
+            o.held_at,
+            o.hold_report_id,
+            a.auction_id,
+            a.start_price,
+            a.current_price,
+            a.status AS auction_status,
+            a.ended_at AS auction_ended_at,
+            p.product_id,
+            p.title AS product_title,
+            p.thumbnail_url,
+            p.condition,
+            p.model_name,
+            pay.payment_id,
+            pay.amount AS payment_amount,
+            pay.type AS payment_type,
+            pay.paid_at,
+            st.settlement_id,
+            st.net_amount,
+            st.payout_at
+        FROM "order" o
+        JOIN auction a ON a.auction_id = o.auction_id
+        JOIN product p ON p.product_id = a.product_id
+        JOIN member s ON s.member_id = o.seller_id
+        JOIN member b ON b.member_id = o.buyer_id
+        LEFT JOIN payment pay ON pay.order_id = o.order_id
+        LEFT JOIN settlement st ON st.order_id = o.order_id
+        WHERE o.order_id = #{orderId}
+    </select>
+
+    <select id="findWinnerId" resultType="java.lang.Long">
+        SELECT
+            b.member_id
+        FROM auction a
+        JOIN bid b ON b.bid_id = a.top_bid_id
+        WHERE a.auction_id = #{auctionId}
+    </select>
+
+    <!-- 차순위: 취소 포함 order가 있던 사람, 이미 제안(AUCTION_WON/차순위 낙찰 안내)을 받은 사람, 비활성 회원 제외 -->
+    <select id="findRunnerUpId" resultType="java.lang.Long">
+        SELECT b.member_id
+        FROM bid b
+        JOIN member m ON m.member_id = b.member_id
+        WHERE b.auction_id = #{auctionId}
+          AND m.status = 'ACTIVE'
+          AND NOT EXISTS (SELECT 1 FROM "order" o WHERE o.auction_id = b.auction_id AND o.buyer_id = b.member_id)
+          AND NOT EXISTS (SELECT 1 FROM notification n
+                          WHERE n.auction_id = b.auction_id AND n.member_id = b.member_id
+                            AND n.type = 'AUCTION_WON' AND n.title = '차순위 낙찰 안내')
+        ORDER BY b.amount DESC
+        LIMIT 1
+    </select>
+
+    <select id="findMaxBidAmount" resultType="java.lang.Long">
+        SELECT MAX(b.amount)
+        FROM bid b
+        WHERE b.auction_id = #{auctionId} AND b.member_id = #{memberId}
+    </select>
+
+    <!-- 경매별 가장 최근 차순위 제안이 만료(before 이전)됐고 그 사람의 order가 없는 경매 -->
+    <select id="findExpiredOfferAuctionIds" resultType="java.lang.Long">
+        SELECT n.auction_id
+        FROM notification n
+        WHERE n.type = 'AUCTION_WON' AND n.title = '차순위 낙찰 안내'
+          AND n.created_at &lt; #{before}
+          AND n.created_at = (SELECT MAX(x.created_at) FROM notification x
+                              WHERE x.auction_id = n.auction_id AND x.type = 'AUCTION_WON' AND x.title = '차순위 낙찰 안내')
+          AND NOT EXISTS (SELECT 1 FROM "order" o WHERE o.auction_id = n.auction_id AND o.buyer_id = n.member_id)
+          AND NOT EXISTS (SELECT 1 FROM "order" o2 WHERE o2.auction_id = n.auction_id AND o2.status &lt;&gt; 'CANCELED')
+    </select>
+
+    <resultMap id="OrderShipmentMap" type="com.b101.dib.order.query.dto.OrderShipmentDto">
+        <id property="orderId" column="order_id"/>
+        <result property="buyerId" column="buyer_id"/>
+        <result property="sellerId" column="seller_id"/>
+        <result property="status" column="status"/>
+        <result property="carrier" column="carrier"/>
+        <result property="trackingNumber" column="tracking_number"/>
+        <result property="address" column="address"/>
+    </resultMap>
+
+    <select id="findShipment" resultMap="OrderShipmentMap">
+        SELECT
+            o.order_id,
+            o.buyer_id,
+            o.seller_id,
+            o.status,
+            o.carrier,
+            o.tracking_number,
+            o.address::text AS address
+        FROM "order" o
+        WHERE o.order_id = #{orderId}
+    </select>
+
+</mapper>
