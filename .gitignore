@@ -38,3 +38,8 @@ venv/
 *.tfvars
 *.tfplan
 *firebase-admin*.json
+
+# local preview only
+README_preview.html
+.claude/
+.preview/
